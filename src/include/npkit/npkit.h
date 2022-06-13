@@ -4,7 +4,7 @@
 #include <string>
 #include <thread>
 
-#include <hip/hip_runtime.h>
+#include <cuda_runtime.h>
 
 #include "npkit/npkit_event.h"
 #include "npkit/npkit_struct.h"

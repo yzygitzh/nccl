@@ -195,14 +195,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
             if (tid == 0) {
-              NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+              NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
                   ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
             }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
             if (tid == 0) {
-              npKitDataProcessEntryTime = __builtin_amdgcn_s_memrealtime();
+              npKitDataProcessEntryTime = clock64();
             }
 #endif
 
@@ -215,14 +215,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
             if (tid == 0) {
-              npKitDataProcessExitTime = __builtin_amdgcn_s_memrealtime();
+              npKitDataProcessExitTime = clock64();
               npKitDataProcessTotalTime += npKitDataProcessExitTime - npKitDataProcessEntryTime;
             }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
             if (tid == 0) {
-              NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+              NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
                   ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
             }
 #endif
@@ -233,14 +233,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
           if (tid == 0) {
-            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
                 ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
           }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
           if (tid == 0) {
-            npKitDataProcessEntryTime = __builtin_amdgcn_s_memrealtime();
+            npKitDataProcessEntryTime = clock64();
           }
 #endif
 
@@ -252,14 +252,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
           if (tid == 0) {
-            npKitDataProcessExitTime = __builtin_amdgcn_s_memrealtime();
+            npKitDataProcessExitTime = clock64();
             npKitDataProcessTotalTime += npKitDataProcessExitTime - npKitDataProcessEntryTime;
           }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
           if (tid == 0) {
-            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
                 ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
           }
 #endif
@@ -268,14 +268,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
           if (tid == 0) {
-            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
                 ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
           }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
           if (tid == 0) {
-            npKitDataProcessEntryTime = __builtin_amdgcn_s_memrealtime();
+            npKitDataProcessEntryTime = clock64();
           }
 #endif
 
@@ -289,14 +289,14 @@ private:
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_PRIM_COLLECT_DATA_PROCESS_TIME)
           if (tid == 0) {
-            npKitDataProcessExitTime = __builtin_amdgcn_s_memrealtime();
+            npKitDataProcessExitTime = clock64();
             npKitDataProcessTotalTime += npKitDataProcessExitTime - npKitDataProcessEntryTime;
           }
 #endif
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
           if (tid == 0) {
-            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
+            NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
                 ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
           }
 #endif
