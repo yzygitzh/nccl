@@ -112,8 +112,11 @@ ncclResult_t NpKit::Dump(const std::string& dump_dir) {
   dump_file_path = dump_dir;
   dump_file_path += "/gpu_clock_rate_rank_";
   dump_file_path += std::to_string(rank_);
-  constexpr int vega_gpu_rtc_freq_in_khz = 25000;
-  std::string clock_rate_str = std::to_string(vega_gpu_rtc_freq_in_khz);
+  cudaDeviceProp dev_prop;
+  int dev;
+  CUDACHECK(cudaGetDevice(&dev));
+  CUDACHECK(cudaGetDeviceProperties(&dev_prop, dev));
+  std::string clock_rate_str = std::to_string(dev_prop.clockRate);
   auto gpu_clock_rate_file = std::fstream(dump_file_path, std::ios::out);
   gpu_clock_rate_file.write(clock_rate_str.c_str(), clock_rate_str.length());
   gpu_clock_rate_file.close();
