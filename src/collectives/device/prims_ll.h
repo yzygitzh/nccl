@@ -467,7 +467,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<0, 1, Input, -1>(inpIx, -1, eltN, false);
+    LLGenericOp<0, 1, Input, -1>(inpIx, -1, eltN, false);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -482,7 +482,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<0, 1, Output, -1>(outIx, -1, eltN, false);
+    LLGenericOp<0, 1, Output, -1>(outIx, -1, eltN, false);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_FROM_OUTPUT_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_FROM_OUTPUT_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -497,7 +497,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<1, 0, -1, Output>(-1, outIx, eltN, postOp);
+    LLGenericOp<1, 0, -1, Output>(-1, outIx, eltN, postOp);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -512,7 +512,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<1, 1, Input, -1>(inpIx, -1, eltN, false);
+    LLGenericOp<1, 1, Input, -1>(inpIx, -1, eltN, false);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_SEND_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_SEND_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -527,7 +527,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<1, 0, Input, Output>(inpIx, outIx, eltN, postOp);
+    LLGenericOp<1, 0, Input, Output>(inpIx, outIx, eltN, postOp);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -542,7 +542,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<0, 1, Input, Output>(inpIx, outIx, eltN, postOp);
+    LLGenericOp<0, 1, Input, Output>(inpIx, outIx, eltN, postOp);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_COPY_SEND_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_COPY_SEND_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -557,7 +557,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<1, 1, -1, Output>(-1, outIx, eltN, postOp);
+    LLGenericOp<1, 1, -1, Output>(-1, outIx, eltN, postOp);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_EXIT, eltN*sizeof(T), 0, clock64(),
@@ -572,7 +572,7 @@ private:
           ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
     }
 #endif
-    return LLGenericOp<1, 1, Input, Output>(inpIx, outIx, eltN, postOp);
+    LLGenericOp<1, 1, Input, Output>(inpIx, outIx, eltN, postOp);
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT)
     if (tid == 0) {
       NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT, eltN*sizeof(T), 0, clock64(),
