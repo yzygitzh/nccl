@@ -61,6 +61,15 @@ struct ncclProxySubArgs {
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
   int npKitSizesFifo[NCCL_STEPS];
 #endif
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+  int npKitSizesFifo[NCCL_STEPS];
+  uint64_t npKitStartTime[NCCL_STEPS];
+  uint64_t npKitLastPollTime[NCCL_STEPS];
+  uint64_t npKitLastPollInterval[NCCL_STEPS];
+  uint64_t npKitMaxPollInterval[NCCL_STEPS];
+  uint64_t npKitPollIntervalSum[NCCL_STEPS];
+  uint64_t npKitPollCnt[NCCL_STEPS];
+#endif
 };
 
 struct ncclProxyArgs {

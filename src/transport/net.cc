@@ -16,6 +16,33 @@
 #include "npkit/npkit.h"
 #endif
 
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+#include <chrono>
+static uint64_t g_npkit_net_check_latency_threshold_us = 100;
+static uint64_t g_npkit_time_den = 1000000000;
+static uint64_t g_npkit_time_num = 1;
+static uint64_t g_npkit_num_warmup_ops = 10000;
+static inline uint64_t npKitGetTsInUs() {
+  return std::chrono::steady_clock::now().time_since_epoch().count() * 1000000 * g_npkit_time_num / g_npkit_time_den;
+}
+static void npKitInitCheckLatencyEnv() {
+  const char* param_threshold_str = "NPKIT_NET_CHECK_LATENCY_THRESHOLD";
+  const char* param_warmup_str = "NPKIT_NUM_WARMUP_OPS";
+  static bool initialized = false;
+  if (!initialized) {
+    g_npkit_time_den = std::chrono::steady_clock::duration::period::den;
+    g_npkit_time_num = std::chrono::steady_clock::duration::period::num;
+    if (getenv(param_threshold_str) != nullptr) {
+      g_npkit_net_check_latency_threshold_us = strtoull(getenv(param_threshold_str), nullptr, 10);
+    }
+    if (getenv(param_warmup_str) != nullptr) {
+      g_npkit_num_warmup_ops = strtoull(getenv(param_warmup_str), nullptr, 10);
+    }
+    initialized = true;
+  }
+}
+#endif
+
 static_assert(sizeof(ncclNetHandle_t) <= CONNECT_SIZE, "NET Connect info is too large");
 
 #define NCCL_NET_MAP_HOSTMEM 0
@@ -191,6 +218,11 @@ static ncclResult_t sendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
         proxyRank, req.useGdr ? "/GDRDMA" : "", req.shared ? "/Shared" : "");
   }
   *((int*)connectInfo) = proxyRank;
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+  npKitInitCheckLatencyEnv();
+#endif
+
   return ncclSuccess;
 }
 
@@ -222,6 +254,11 @@ static ncclResult_t recvSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
 
   INFO(NCCL_INIT|NCCL_NET,"Channel %02d/%d : %d[%lx] -> %d[%lx] [receive] via NET/%s/%d%s%s", channelId, connIndex, peerInfo->rank, peerInfo->busId, myInfo->rank, myInfo->busId, ncclNetName(), req.netDev,
       req.useGdr ? "/GDRDMA" : "", req.shared ? "/Shared" : "");
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+  npKitInitCheckLatencyEnv();
+#endif
+
   return ncclSuccess;
 }
 
@@ -838,6 +875,9 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
           sub->npKitSizesFifo[buffSlot] = size;
 #endif
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+          sub->npKitSizesFifo[buffSlot] = size;
+#endif
 
           char* buff = resources->shared ? localBuff+resources->recvMem->offsFifo[buffSlot] : localBuff+buffSlot*stepSize;
           int ready = 1;
@@ -884,6 +924,11 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
 #endif
 #endif
 
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+              sub->npKitStartTime[buffSlot] = sub->npKitLastPollTime[buffSlot] = npKitGetTsInUs();
+              sub->npKitMaxPollInterval[buffSlot] = sub->npKitPollIntervalSum[buffSlot] = sub->npKitPollCnt[buffSlot] = 0;
+#endif
+
               TRACE(NCCL_NET, "sendProxy [%ld/%d] Isend posted, req %p", sub->transmitted, buffSlot, sub->requests[buffSlot]);
               sizesFifo[buffSlot] = -1;
               // Make sure size is reset to zero before we update the head.
@@ -901,6 +946,18 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
         int done;
         int buffSlot = (sub->base+sub->done)%NCCL_STEPS;
         NCCLCHECK(ncclNetTest(sub->requests[buffSlot], &done, NULL));
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+        uint64_t npKitPollTime = npKitGetTsInUs();
+        sub->npKitLastPollInterval[buffSlot] = npKitPollTime - sub->npKitLastPollTime[buffSlot];
+        sub->npKitPollIntervalSum[buffSlot] += sub->npKitLastPollInterval[buffSlot];
+        if (sub->npKitLastPollInterval[buffSlot] > sub->npKitMaxPollInterval[buffSlot]) {
+            sub->npKitMaxPollInterval[buffSlot] = sub->npKitLastPollInterval[buffSlot];
+        }
+        sub->npKitLastPollTime[buffSlot] = npKitPollTime;
+        sub->npKitPollCnt[buffSlot]++;
+#endif
+
         if (done) {
 
 #if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
@@ -916,6 +973,19 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
 #if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
           g_npkit_net_poll_cnt = 0;
 #endif
+#endif
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+          uint64_t npKitSendDuration = sub->npKitLastPollTime[buffSlot] - sub->npKitStartTime[buffSlot];
+          if (g_npkit_num_warmup_ops > 0) {
+            g_npkit_num_warmup_ops--;
+          }
+          if (g_npkit_num_warmup_ops == 0 && npKitSendDuration > g_npkit_net_check_latency_threshold_us) {
+            fprintf(stdout, "NPKIT LONG SEND (R:%d,P:%d,C:%d,S:%d): %d took %lu us, last/max/sum poll interval %lu/%lu/%lu us, cnt: %lu, ts: %lu/%lu\n",
+                    comm->rank, sub->peer, sub->channelId, buffSlot, sub->npKitSizesFifo[buffSlot], npKitSendDuration, sub->npKitLastPollInterval[buffSlot], sub->npKitMaxPollInterval[buffSlot], sub->npKitPollIntervalSum[buffSlot], sub->npKitPollCnt[buffSlot], sub->npKitStartTime[buffSlot], sub->npKitLastPollTime[buffSlot]);
+            sub->npKitStartTime[buffSlot] = sub->npKitLastPollTime[buffSlot] = npKitGetTsInUs();
+            sub->npKitMaxPollInterval[buffSlot] = sub->npKitPollIntervalSum[buffSlot] = sub->npKitPollCnt[buffSlot] = 0;
+          }
 #endif
 
           TRACE(NCCL_NET, "sendProxy [%ld/%d] request %p done", sub->done, buffSlot, sub->requests[buffSlot]);
@@ -1045,6 +1115,11 @@ static ncclResult_t recvProxyProgress(struct ncclComm* comm, struct ncclProxyArg
 #endif
 #endif
 
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+            sub->npKitStartTime[step%NCCL_STEPS] = sub->npKitLastPollTime[step%NCCL_STEPS] = npKitGetTsInUs();
+            sub->npKitMaxPollInterval[step%NCCL_STEPS] = sub->npKitPollIntervalSum[step%NCCL_STEPS] = sub->npKitPollCnt[step%NCCL_STEPS] = 0;
+#endif
+
             sub->posted += args->sliceSteps;
             for (uint64_t step=sub->posted-args->sliceSteps; step<sub->posted; step++) ncclProfilingRecord(args, s+i, step, ncclProxyProfileRecvWait);
           }
@@ -1064,6 +1139,21 @@ static ncclResult_t recvProxyProgress(struct ncclComm* comm, struct ncclProxyArg
         void* mhandles[NCCL_PROXY_MAX_SUBS];
         for (int i=0; i<NCCL_PROXY_MAX_SUBS; i++) sizes[i] = 0;
         NCCLCHECK(ncclNetTest(subGroup->requests[step%NCCL_STEPS], &done, sizes));
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+        uint64_t npKitPollTime = npKitGetTsInUs();
+        for (int i=0; i<subGroup->groupSize; i++) {
+          struct ncclProxySubArgs* sub = subGroup + i;
+          sub->npKitLastPollInterval[step%NCCL_STEPS] = npKitPollTime - sub->npKitLastPollTime[step%NCCL_STEPS];
+          sub->npKitPollIntervalSum[step%NCCL_STEPS] += sub->npKitLastPollInterval[step%NCCL_STEPS];
+          if (sub->npKitLastPollInterval[step%NCCL_STEPS] > sub->npKitMaxPollInterval[step%NCCL_STEPS]) {
+              sub->npKitMaxPollInterval[step%NCCL_STEPS] = sub->npKitLastPollInterval[step%NCCL_STEPS];
+          }
+          sub->npKitLastPollTime[step%NCCL_STEPS] = npKitPollTime;
+          sub->npKitPollCnt[step%NCCL_STEPS]++;
+        }
+#endif
+
         if (done) {
           int useGdr = 0;
           int totalSize = 0;
@@ -1084,6 +1174,19 @@ static ncclResult_t recvProxyProgress(struct ncclComm* comm, struct ncclProxyArg
 #if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
             g_npkit_net_poll_cnt = 0;
 #endif
+#endif
+
+#if defined(ENABLE_NPKIT_NET_CHECK_LATENCY)
+            if (g_npkit_num_warmup_ops > 0) {
+              g_npkit_num_warmup_ops--;
+            }
+            uint64_t npKitRecvDuration = sub->npKitLastPollTime[step%NCCL_STEPS] - sub->npKitStartTime[step%NCCL_STEPS];
+            if (g_npkit_num_warmup_ops == 0 && npKitRecvDuration > g_npkit_net_check_latency_threshold_us) {
+              fprintf(stdout, "NPKIT LONG RECV (R:%d,P:%d,C:%d,S:%lu): %d took %lu us, last/max/sum poll interval %lu/%lu/%lu us, cnt: %lu, ts: %lu/%lu\n",
+                      comm->rank, sub->peer, sub->channelId, step%NCCL_STEPS, sizes[i], npKitRecvDuration, sub->npKitLastPollInterval[step%NCCL_STEPS], sub->npKitMaxPollInterval[step%NCCL_STEPS], sub->npKitPollIntervalSum[step%NCCL_STEPS], sub->npKitPollCnt[step%NCCL_STEPS], sub->npKitStartTime[step%NCCL_STEPS], sub->npKitLastPollTime[step%NCCL_STEPS]);
+              sub->npKitStartTime[step%NCCL_STEPS] = sub->npKitLastPollTime[step%NCCL_STEPS] = npKitGetTsInUs();
+              sub->npKitMaxPollInterval[step%NCCL_STEPS] = sub->npKitPollIntervalSum[step%NCCL_STEPS] = sub->npKitPollCnt[step%NCCL_STEPS] = 0;
+            }
 #endif
 
             sub->received += args->sliceSteps;
