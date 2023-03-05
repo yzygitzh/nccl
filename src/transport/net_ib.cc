@@ -221,6 +221,10 @@ ncclResult_t ncclIbInit(ncclDebugLogger_t logFunction) {
           ncclIbDevs[ncclNIbDevs].guid = devAttr.sys_image_guid;
           ncclIbDevs[ncclNIbDevs].port = port;
           ncclIbDevs[ncclNIbDevs].link = portAttr.link_layer;
+          // Hotfix, filter out non-InfiniBand links
+          if (ncclIbDevs[ncclNIbDevs].link != IBV_LINK_LAYER_INFINIBAND) {
+            continue;
+          }
           ncclIbDevs[ncclNIbDevs].speed = ncclIbSpeed(portAttr.active_speed) * ncclIbWidth(portAttr.active_width);
           ncclIbDevs[ncclNIbDevs].context = context;
           ncclIbDevs[ncclNIbDevs].pdRefs = 0;

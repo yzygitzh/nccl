@@ -7,6 +7,8 @@
 #include "enqueue.h"
 #include "collectives.h"
 
+NCCL_PARAM(TreeBroadcastEnabled, "TREE_BROADCAST_ENABLED", 0);
+
 NCCL_API(ncclResult_t, ncclBroadcast, const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype, int root,
     ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype, int root,
@@ -22,10 +24,20 @@ ncclResult_t ncclBroadcast(const void* sendbuff, void* recvbuff, size_t count, n
   NvtxParamsBroadcast payload{count * ncclTypeSize(datatype), root};
   NVTX3_FUNC_WITH_PARAMS(Broadcast, BroadcastSchema, payload)
 
-  struct ncclInfo info = { ncclFuncBroadcast, "Broadcast",
-    sendbuff, recvbuff, count, datatype, ncclSum, root, comm, stream, /* Args */
-    BROADCAST_CHUNKSTEPS, BROADCAST_SLICESTEPS };
-  return ncclEnqueueCheck(&info);
+  if (ncclParamTreeBroadcastEnabled()) {
+    if (comm->rank != root) {
+      CUDACHECK(cudaMemsetAsync((void*)sendbuff, 0, count * ncclTypeSize(datatype), stream));
+    }
+    struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
+      sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream, /* Args */
+      ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS };
+    return ncclEnqueueCheck(&info);
+  } else {
+    struct ncclInfo info = { ncclFuncBroadcast, "Broadcast",
+      sendbuff, recvbuff, count, datatype, ncclSum, root, comm, stream, /* Args */
+      BROADCAST_CHUNKSTEPS, BROADCAST_SLICESTEPS };
+    return ncclEnqueueCheck(&info);
+  }
 }
 /* Deprecated original "in place" function, similar to MPI */
 NCCL_API(ncclResult_t, ncclBcast, void* buff, size_t count, ncclDataType_t datatype, int root,
