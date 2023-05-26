@@ -1297,6 +1297,11 @@ ncclResult_t ncclCommInitRankConfig(ncclComm_t *newcomm, int nranks, ncclUniqueI
     }
   }
 
+  /* PyTorch using NCCL >= 2.17 uses INT_MIN as user-undefined and we should use default value from NCCL. */
+  if (internalConfigPtr->blocking == INT_MIN) {
+    internalConfigPtr->blocking = 1;
+  }
+
   /* check input config attributes */
   if (internalConfigPtr->blocking != 0 && internalConfigPtr->blocking != 1) {
     WARN("Invalid config blocking attribute value %d", internalConfigPtr->blocking);
